@@ -31,13 +31,9 @@ jobs:
           cordova platform add ios
           cp ../www/index.html www/index.html
           
-          # تعديل إصدار الهدف ليتوافق مع أداة البناء
+          # Mettre à jour la cible de déploiement à 12.0 pour éviter l'erreur de version
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 11.0;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' platforms/ios/TacticalHUD.xcodeproj/project.pbxproj
-          
-          cordova build ios --device --no-codesign
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 11.0;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' platforms/ios/CordovaLib/CordovaLib.xcodeproj/project.pbxproj
 
-      - name: Archive IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-ipa
-          path: myApp/platforms/ios/build/device/*.ipa
+          # Compiler en mode debug pour éviter l'archivage strict qui exige une signature payante
+          cordova build ios --device --no-codesign
