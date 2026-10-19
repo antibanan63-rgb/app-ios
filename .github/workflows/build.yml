@@ -30,7 +30,7 @@ jobs:
           cd myApp
           cordova platform add ios
           cp ../www/index.html www/index.html
-          cordova build ios --no-codesign
+          cordova build ios --device --no-codesign
 
       - name: Archive IPA artifact
         uses: actions/upload-artifact@v4
