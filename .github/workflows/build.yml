@@ -16,30 +16,14 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Create Web App Structure
+      - name: Create Web App Package
         run: |
-          mkdir -p www
-          cp main.html www/index.html
+          mkdir -p Payload
+          cp main.html Payload/index.html
+          zip -r app.zip Payload
 
-      - name: Install Cordova
-        run: npm install -g cordova
-
-      - name: Create Cordova Project
-        run: |
-          cordova create myApp com.example.tacticalhud TacticalHUD
-          cd myApp
-          cordova platform add ios
-          cp ../www/index.html www/index.html
-          
-          # تحديث إصدار التوافق
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 11.0;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' platforms/ios/TacticalHUD.xcodeproj/project.pbxproj
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 11.0;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' platforms/ios/CordovaLib/CordovaLib.xcodeproj/project.pbxproj
-
-          # بناء التطبيق بدون أرشفة وبدون توقيع
-          cordova build ios --device --no-codesign --debug
-
-      - name: Archive IPA artifact
+      - name: Archive Web artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-ipa
-          path: myApp/platforms/ios/build/device/*.ipa
+          name: web-app-bundle
+          path: app.zip
