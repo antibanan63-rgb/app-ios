@@ -30,6 +30,10 @@ jobs:
           cd myApp
           cordova platform add ios
           cp ../www/index.html www/index.html
+          
+          # تعديل إصدار الهدف ليتوافق مع أداة البناء
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 11.0;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' platforms/ios/TacticalHUD.xcodeproj/project.pbxproj
+          
           cordova build ios --device --no-codesign
 
       - name: Archive IPA artifact
