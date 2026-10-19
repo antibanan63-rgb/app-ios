@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Next-Gen Cyber Tactical HUD & Overlay</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: #05070c;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(34, 197, 94, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 45%),
+                radial-gradient(circle at 50% 50%, rgba(10, 15, 30, 0.95) 0%, transparent 100%);
+            overflow-x: hidden;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Glassmorphism Card Style */
+        .glass-panel {
+            background: rgba(13, 17, 28, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.7),
+                        inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .neon-border-green {
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.25);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+        }
+
+        /* Toggle Switches */
+        .toggle-switch input:checked ~ .toggle-bg {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.6);
+        }
+        .toggle-switch input:checked ~ .toggle-bg .toggle-dot {
+            transform: translateX(24px);
+            background-color: #ffffff;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+        }
+
+        .toggle-switch-purple input:checked ~ .toggle-bg {
+            background: linear-gradient(135deg, #c084fc 0%, #9333ea 100%);
+            box-shadow: 0 0 16px rgba(168, 85, 247, 0.6);
+        }
+        .toggle-switch-purple input:checked ~ .toggle-bg .toggle-dot {
+            transform: translateX(24px);
+            background-color: #ffffff;
+        }
+
+        /* Range Sliders */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 9999px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #22c55e;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -7px;
+            box-shadow: 0 0 14px rgba(34, 197, 94, 0.9), 0 0 4px #ffffff;
+            border: 2px solid #ffffff;
+            transition: transform 0.15s ease;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+
+        #hudCanvas {
+            touch-action: none;
+            cursor: crosshair;
+        }
+
+        /* Scanline Overlay effect */
+        .scanlines {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0, 0, 0, 0.3) 50%,
+                rgba(0, 0, 0, 0.3)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 p-3 sm:p-6 flex items-center justify-center">
+
+    <div class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        <!-- LEFT CONTROL MENU -->
+        <div class="lg:col-span-5 space-y-4 flex flex-col justify-between">
+            
+            <div class="space-y-4">
+                <!-- Header -->
+                <div class="glass-panel rounded-2xl p-4 flex items-center justify-between border-l-4 border-l-emerald-500">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                            <i class="fa-solid fa-crosshairs text-emerald-400 text-lg animate-spin-slow"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-orbitron text-base font-extrabold tracking-wider text-white">TACTICAL HUD V3.0</h1>
+                            <p class="text-xs text-emerald-400 font-semibold tracking-wide">ULTRA-REALISTIC OVERLAY ENGINE</p>
+                        </div>
+                    </div>
+                    <span id="statusBadge" class="px-3 py-1 rounded-md text-[10px] font-orbitron font-extrabold tracking-widest bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 uppercase animate-pulse">
+                        ONLINE
+                    </span>
+                </div>
+
+                <!-- ANTI-BAN BANNER -->
+                <div class="glass-panel rounded-2xl p-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
+                            <i class="fa-solid fa-shield-halved text-purple-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-sm font-bold text-white tracking-wide">Launch Anti-Ban Shield</h2>
+                            <p class="text-[11px] text-gray-400">Kernel Bypass & Memory Guard</p>
+                        </div>
+                    </div>
+                    <label class="toggle-switch-purple relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="antiBanToggle" checked class="sr-only" onchange="toggleAntiBan(this)">
+                        <div class="toggle-bg w-12 h-6 bg-slate-900 rounded-full transition-all duration-300 relative border border-white/10">
+                            <div class="toggle-dot absolute top-[1px] left-[1px] bg-gray-400 w-5 h-5 rounded-full transition-all duration-300"></div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- AIMBOT CONFIGURATION -->
+                <div class="glass-panel rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-microchip text-purple-400 text-xs"></i>
+                            <span class="font-orbitron text-xs font-extrabold tracking-wider text-purple-400 uppercase">Target Acquisition</span>
+                        </div>
+                        <span class="text-[10px] text-purple-300 font-mono">LOCK: HEAD ONLY</span>
+                    </div>
+
+                    <div class="flex items-center justify-between py-1">
+                        <span class="text-sm font-bold text-gray-200">Aimbot Target Lock</span>
+                        <label class="toggle-switch-purple relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="aimbotToggle" checked class="sr-only" onchange="renderHUD()">
+                            <div class="toggle-bg w-12 h-6 bg-slate-900 rounded-full transition-all duration-300 relative border border-white/10">
+                                <div class="toggle-dot absolute top-[1px] left-[1px] bg-gray-400 w-5 h-5 rounded-full transition-all duration-300"></div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between py-1">
+                        <span class="text-sm font-bold text-gray-200">Aimbot Tracer Line</span>
+                        <label class="toggle-switch-purple relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="aimVectorToggle" checked class="sr-only" onchange="renderHUD()">
+                            <div class="toggle-bg w-12 h-6 bg-slate-900 rounded-full transition-all duration-300 relative border border-white/10">
+                                <div class="toggle-dot absolute top-[1px] left-[1px] bg-gray-400 w-5 h-5 rounded-full transition-all duration-300"></div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between py-1">
+                        <span class="text-sm font-bold text-gray-200">Skeletal Hitbox (3D Bone)</span>
+                        <label class="toggle-switch-purple relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="skeletonToggle" checked class="sr-only" onchange="renderHUD()">
+                            <div class="toggle-bg w-12 h-6 bg-slate-900 rounded-full transition-all duration-300 relative border border-white/10">
+                                <div class="toggle-dot absolute top-[1px] left-[1px] bg-gray-400 w-5 h-5 rounded-full transition-all duration-300"></div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- FOV & VISUAL TUNING -->
+                <div class="glass-panel rounded-2xl p-4 space-y-4">
+                    <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-sliders text-emerald-400 text-xs"></i>
+                            <span class="font-orbitron text-xs font-extrabold tracking-wider text-emerald-400 uppercase">Field Of View Tuning</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between py-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm font-bold text-gray-200">Draw FOV Circle</span>
+                            <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></div>
+                        </div>
+                        <label class="toggle-switch relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="drawFovToggle" checked class="sr-only" onchange="renderHUD()">
+                            <div class="toggle-bg w-12 h-6 bg-slate-900 rounded-full transition-all duration-300 relative border border-white/10">
+                                <div class="toggle-dot absolute top-[1px] left-[1px] bg-gray-400 w-5 h-5 rounded-full transition-all duration-300"></div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- FOV Slider -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center text-xs font-bold">
+                            <span class="text-gray-300">FOV Radius</span>
+                            <span id="fovDisplay" class="text-emerald-400 font-mono text-sm font-extrabold">136 px</span>
+                        </div>
+                        <input type="range" id="fovSlider" min="50" max="240" value="136" oninput="updateFov(this.value)">
+                    </div>
+
+                    <!-- Distance Slider -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center text-xs font-bold">
+                            <span class="text-gray-300">Aim Distance Max</span>
+                            <span id="distDisplay" class="text-emerald-400 font-mono text-sm font-extrabold">150m</span>
+                        </div>
+                        <input type="range" id="distSlider" min="20" max="350" value="150" oninput="updateDist(this.value)">
+                    </div>
+
+                    <div class="flex items-center justify-between py-1 border-t border-white/10 pt-2">
+                        <span class="text-sm font-bold text-gray-200">Ignore Knocked Players</span>
+                        <label class="toggle-switch relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="ignoreKnockedToggle" checked class="sr-only" onchange="renderHUD()">
+                            <div class="toggle-bg w-12 h-6 bg-slate-900 rounded-full transition-all duration-300 relative border border-white/10">
+                                <div class="toggle-dot absolute top-[1px] left-[1px] bg-gray-400 w-5 h-5 rounded-full transition-all duration-300"></div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Stats -->
+            <div class="glass-panel rounded-xl p-3 flex justify-between items-center text-[11px] font-mono text-gray-400">
+                <span>FPS: <strong class="text-emerald-400">120.0</strong></span>
+                <span>LATENCY: <strong class="text-emerald-400">12ms</strong></span>
+                <span>RENDER: <strong class="text-purple-400">WebGL2</strong></span>
+            </div>
+
+        </div>
+
+        <!-- RIGHT TACTICAL SCREEN CANVAS -->
+        <div class="lg:col-span-7 flex flex-col space-y-2">
+            <div class="flex items-center justify-between px-2">
+                <span class="font-orbitron text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="fa-solid fa-eye text-emerald-400"></i>
+                    Live Tactical Screen Overlay
+                </span>
+                <span class="text-[11px] text-gray-400 font-mono">DRAG MOUSE / TOUCH TO AIM</span>
+            </div>
+
+            <div class="glass-panel rounded-2xl overflow-hidden p-2 relative flex-grow min-h-[480px] lg:min-h-[580px] flex items-center justify-center neon-border-green">
+                <canvas id="hudCanvas" class="w-full h-full rounded-xl bg-slate-950"></canvas>
+                <div class="scanlines absolute inset-0 rounded-xl"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- HUD Rendering Engine -->
+    <script>
+        const canvas = document.getElementById('hudCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let aimPos = { x: 0, y: 0 };
+        let enemyPos = { x: 0, y: 0 };
+        let isDragging = false;
+        let animFrameId;
+        let pulseAngle = 0;
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width - 16;
+            canvas.height = Math.max(460, rect.height - 16);
+            
+            if (aimPos.x === 0) {
+                aimPos = { x: canvas.width / 2, y: canvas.height / 2 };
+                enemyPos = { x: canvas.width / 2 - 40, y: canvas.height / 2 - 80 };
+            }
+        }
+
+        function updateFov(val) {
+            document.getElementById('fovDisplay').innerText = val + ' px';
+        }
+
+        function updateDist(val) {
+            document.getElementById('distDisplay').innerText = val + 'm';
+        }
+
+        function toggleAntiBan(el) {
+            const badge = document.getElementById('statusBadge');
+            if (el.checked) {
+                badge.innerText = "ONLINE";
+                badge.className = "px-3 py-1 rounded-md text-[10px] font-orbitron font-extrabold tracking-widest bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 uppercase animate-pulse";
+            } else {
+                badge.innerText = "OFFLINE";
+                badge.className = "px-3 py-1 rounded-md text-[10px] font-orbitron font-extrabold tracking-widest bg-red-500/20 text-red-400 border border-red-500/40 uppercase";
+            }
+        }
+
+        // Main Drawing Loop
+        function renderHUD() {
+            pulseAngle += 0.03;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Tactical Grid & Radar Background
+            ctx.strokeStyle = "rgba(16, 185, 129, 0.06)";
+            ctx.lineWidth = 1;
+            const gridSize = 32;
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Radar compass lines
+            ctx.strokeStyle = "rgba(34, 197, 94, 0.12)";
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+
+            // Options
+            const drawFov = document.getElementById('drawFovToggle').checked;
+            const fovRadius = parseInt(document.getElementById('fovSlider').value);
+            const aimbotOn = document.getElementById('aimbotToggle').checked;
+            const vectorOn = document.getElementById('aimVectorToggle').checked;
+            const showSkeleton = document.getElementById('skeletonToggle').checked;
+            const distVal = document.getElementById('distSlider').value;
+
+            // Enemy position parameters
+            const eX = enemyPos.x;
+            const eY = enemyPos.y;
+            const eW = 75;
+            const eH = 175;
+            const headX = eX + eW / 2;
+            const headY = eY + 24;
+
+            // 2. Draw Skeletal Hitbox Model (3D-like stickman frame)
+            if (showSkeleton) {
+                ctx.strokeStyle = "rgba(34, 197, 94, 0.85)";
+                ctx.lineWidth = 2;
+                ctx.shadowColor = "#22c55e";
+                ctx.shadowBlur = 8;
+
+                // Spine
+                ctx.beginPath();
+                ctx.moveTo(headX, headY);
+                ctx.lineTo(headX, eY + 90);
+                // Shoulders
+                ctx.moveTo(headX - 22, eY + 45);
+                ctx.lineTo(headX + 22, eY + 45);
+                // Arms
+                ctx.lineTo(headX + 28, eY + 90);
+                ctx.moveTo(headX - 22, eY + 45);
+                ctx.lineTo(headX - 28, eY + 90);
+                // Pelvis to Legs
+                ctx.moveTo(headX, eY + 90);
+                ctx.lineTo(headX - 18, eY + 165);
+                ctx.moveTo(headX, eY + 90);
+                ctx.lineTo(headX + 18, eY + 165);
+                ctx.stroke();
+
+                // Skeleton Joint Nodes
+                const joints = [
+                    {x: headX - 22, y: eY + 45}, {x: headX + 22, y: eY + 45},
+                    {x: headX - 28, y: eY + 90}, {x: headX + 28, y: eY + 90},
+                    {x: headX, y: eY + 90},
+                    {x: headX - 18, y: eY + 165}, {x: headX + 18, y: eY + 165}
+                ];
+                ctx.fillStyle = "#ffffff";
+                joints.forEach(j => {
+                    ctx.beginPath();
+                    ctx.arc(j.x, j.y, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                ctx.shadowBlur = 0;
+            }
+
+            // 3. Realistic Tactical Corner Bracket ESP Box
+            ctx.strokeStyle = "#22c55e";
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = "#22c55e";
+            ctx.shadowBlur = 10;
+
+            const cLen = 16; // Corner line length
+            // Top-Left Corner
+            ctx.beginPath();
+            ctx.moveTo(eX, eY + cLen); ctx.lineTo(eX, eY); ctx.lineTo(eX + cLen, eY);
+            // Top-Right Corner
+            ctx.moveTo(eX + eW - cLen, eY); ctx.lineTo(eX + eW, eY); ctx.lineTo(eX + eW, eY + cLen);
+            // Bottom-Left Corner
+            ctx.moveTo(eX, eY + eH - cLen); ctx.lineTo(eX, eY + eH); ctx.lineTo(eX + cLen, eY + eH);
+            // Bottom-Right Corner
+            ctx.moveTo(eX + eW - cLen, eY + eH); ctx.lineTo(eX + eW, eY + eH); ctx.lineTo(eX + eW, eY + eH - cLen);
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+
+            // ESP Target Header Tag & Health Bar
+            ctx.fillStyle = "rgba(34, 197, 94, 0.2)";
+            ctx.fillRect(eX, eY - 22, eW, 16);
+            ctx.strokeStyle = "rgba(34, 197, 94, 0.6)";
+            ctx.strokeRect(eX, eY - 22, eW, 16);
+
+            ctx.font = "bold 10px Orbitron";
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText(`ENEMY [${distVal}m]`, eX + 4, eY - 10);
+
+            // Health Bar
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+            ctx.fillRect(eX - 6, eY, 4, eH);
+            ctx.fillStyle = "#22c55e";
+            ctx.fillRect(eX - 6, eY + 20, 4, eH - 20); // 80% HP
+
+            // 4. Head Aim Target Circle (Red Glow Dot)
+            ctx.strokeStyle = "#ef4444";
+            ctx.lineWidth = 2;
+            ctx.shadowColor = "#ef4444";
+            ctx.shadowBlur = 12;
+
+            // Head Box Target Scope
+            ctx.beginPath();
+            ctx.arc(headX, headY, 14, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner Solid Red Head Lock Dot
+            ctx.fillStyle = "#f87171";
+            ctx.beginPath();
+            ctx.arc(headX, headY, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // White Inner Highlight
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.arc(headX - 1.5, headY - 1.5, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+
+            // 5. Aim Tracer Line (Crosshair to Head)
+            if (aimbotOn && vectorOn) {
+                ctx.strokeStyle = "rgba(34, 197, 94, 0.9)";
+                ctx.lineWidth = 1.8;
+                ctx.setLineDash([4, 4]); // Tactical dotted line
+                ctx.beginPath();
+                ctx.moveTo(aimPos.x, aimPos.y);
+                ctx.lineTo(headX, headY);
+                ctx.stroke();
+                ctx.setLineDash([]); // Reset dash
+
+                // Pulse indicator along vector
+                const vectorDistX = headX - aimPos.x;
+                const vectorDistY = headY - aimPos.y;
+                const pulseRatio = (Math.sin(pulseAngle * 2) + 1) / 2;
+                const pulseX = aimPos.x + vectorDistX * pulseRatio;
+                const pulseY = aimPos.y + vectorDistY * pulseRatio;
+
+                ctx.fillStyle = "#22c55e";
+                ctx.beginPath();
+                ctx.arc(pulseX, pulseY, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 6. Glowing Green FOV Circle with Tech Tick Marks
+            if (drawFov) {
+                ctx.strokeStyle = "rgba(34, 197, 94, 0.85)";
+                ctx.lineWidth = 2;
+                ctx.shadowColor = "#22c55e";
+                ctx.shadowBlur = 14;
+
+                ctx.beginPath();
+                ctx.arc(aimPos.x, aimPos.y, fovRadius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Faint inner fill
+                ctx.fillStyle = "rgba(34, 197, 94, 0.03)";
+                ctx.beginPath();
+                ctx.arc(aimPos.x, aimPos.y, fovRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Outer rotating notches on FOV circle
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = "#22c55e";
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 4; i++) {
+                    const angle = pulseAngle + (i * Math.PI / 2);
+                    const nx1 = aimPos.x + Math.cos(angle) * (fovRadius - 6);
+                    const ny1 = aimPos.y + Math.sin(angle) * (fovRadius - 6);
+                    const nx2 = aimPos.x + Math.cos(angle) * (fovRadius + 6);
+                    const ny2 = aimPos.y + Math.sin(angle) * (fovRadius + 6);
+                    ctx.beginPath();
+                    ctx.moveTo(nx1, ny1);
+                    ctx.lineTo(nx2, ny2);
+                    ctx.stroke();
+                }
+            }
+
+            // 7. Tactical Precision Crosshair Reticle
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 1.8;
+            ctx.shadowColor = "#ffffff";
+            ctx.shadowBlur = 6;
+
+            // Center Ring
+            ctx.beginPath();
+            ctx.arc(aimPos.x, aimPos.y, 10, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Crosshair Notches
+            const gap = 12;
+            const len = 10;
+            ctx.beginPath();
+            // Top
+            ctx.moveTo(aimPos.x, aimPos.y - gap); ctx.lineTo(aimPos.x, aimPos.y - gap - len);
+            // Bottom
+            ctx.moveTo(aimPos.x, aimPos.y + gap); ctx.lineTo(aimPos.x, aimPos.y + gap + len);
+            // Left
+            ctx.moveTo(aimPos.x - gap, aimPos.y); ctx.lineTo(aimPos.x - gap - len, aimPos.y);
+            // Right
+            ctx.moveTo(aimPos.x + gap, aimPos.y); ctx.lineTo(aimPos.x + gap + len, aimPos.y);
+            ctx.stroke();
+
+            // Center Red Aim Point
+            ctx.fillStyle = "#ef4444";
+            ctx.beginPath();
+            ctx.arc(aimPos.x, aimPos.y, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+
+            animFrameId = requestAnimationFrame(renderHUD);
+        }
+
+        // Mouse / Touch Dragging to reposition crosshair
+        function handlePointerMove(e) {
+            if (!isDragging) return;
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+            if (clientX !== undefined && clientY !== undefined) {
+                aimPos.x = clientX - rect.left;
+                aimPos.y = clientY - rect.top;
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => { isDragging = true; handlePointerMove(e); });
+        canvas.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        canvas.addEventListener('touchstart', (e) => { isDragging = true; handlePointerMove(e); }, { passive: true });
+        canvas.addEventListener('touchmove', handlePointerMove, { passive: true });
+        window.addEventListener('touchend', () => { isDragging = false; });
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+        });
+
+        window.onload = function() {
+            resizeCanvas();
+            renderHUD();
+        };
+    </script>
+</body>
+</html>
