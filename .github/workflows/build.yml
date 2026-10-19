@@ -1,0 +1,39 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Create Web App Structure
+        run: |
+          mkdir -p www
+          cp main.html www/index.html
+
+      - name: Install Cordova
+        run: npm install -g cordova
+
+      - name: Create Cordova Project
+        run: |
+          cordova create myApp com.example.tacticalhud TacticalHUD
+          cd myApp
+          cordova platform add ios
+          cp ../www/index.html www/index.html
+          cordova build ios --no-codesign
+
+      - name: Archive IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-ipa
+          path: myApp/platforms/ios/build/device/*.ipa
